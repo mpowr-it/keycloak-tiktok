@@ -4,13 +4,13 @@ import org.keycloak.broker.provider.AbstractIdentityProviderFactory;
 import org.keycloak.broker.social.SocialIdentityProviderFactory;
 import org.keycloak.models.IdentityProviderModel;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.provider.ProviderConfigurationBuilder;
+import org.keycloak.provider.ServerInfoAwareProviderFactory;
 
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class TikTokIdentityProviderFactory extends AbstractIdentityProviderFactory<TikTokIdentityProvider>
-        implements SocialIdentityProviderFactory<TikTokIdentityProvider> {
+        implements SocialIdentityProviderFactory<TikTokIdentityProvider>, ServerInfoAwareProviderFactory {
 
     public static final String PROVIDER_ID = "tiktok";
 
@@ -32,5 +32,22 @@ public class TikTokIdentityProviderFactory extends AbstractIdentityProviderFacto
     @Override
     public String getId() {
         return PROVIDER_ID;
+    }
+
+    /**
+     * Returns the list operational information for the TikTok identity provider.
+     *
+     * @return Map<String, String> Map of operational information
+     */
+    @Override
+    public Map<String, String> getOperationalInfo() {
+        Map<String, String> ret = new LinkedHashMap<>();
+        ret.put("social_provider", "tiktok");
+        ret.put("version", "0.1.0");
+        ret.put("author", "MPOWR IT GmbH");
+        ret.put("author_url", "https://mpowr.it");
+        ret.put("project_url", "https://github.com/mpowr-it/keycloak-tiktok");
+
+        return ret;
     }
 }
