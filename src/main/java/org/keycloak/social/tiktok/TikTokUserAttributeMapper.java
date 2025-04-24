@@ -15,5 +15,4 @@ public class TikTokUserAttributeMapper extends AbstractJsonUserAttributeMapper {
     public String getId() {
         return "tiktok-user-attribute-mapper";
     }
-
 }
