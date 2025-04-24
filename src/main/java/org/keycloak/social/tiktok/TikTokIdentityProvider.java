@@ -164,7 +164,7 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
      *
      * @return String[] List of fields
      */
-    public List<String> getFieldsFromScopes(List<String> scopes) {
+    protected List<String> getFieldsFromScopes(List<String> scopes) {
         List<String> fields = new ArrayList<>();
 
         // Query all fields defined by the given scopes
@@ -193,15 +193,15 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
             return DEFAULT_SCOPES;
         }
 
-        List<String> scopes = Arrays.asList(DEFAULT_SCOPES.split(","));
+        ArrayList<String> scopes = new ArrayList<>(Arrays.asList(DEFAULT_SCOPES.split(",")));
         scopes.addAll(Arrays.asList(getConfig().getDefaultScope().trim().split(",")));
 
+        // Remove duplicates and sort the scopes
         Set<String> uniqueScopes = new HashSet<>(scopes);
-        if (uniqueScopes.size() != scopes.size()) {
-            log.warn("Duplicate scopes found in default scope configuration. Using unique scopes only.");
-        }
+        ArrayList<String> newScopes = new ArrayList<>(uniqueScopes);
+        Collections.sort(newScopes);
 
-        String finalScopes = String.join(",", new ArrayList<>(uniqueScopes));
+        String finalScopes = String.join(",", newScopes);
 
         log.debug("requested scopes: " + finalScopes);
 
