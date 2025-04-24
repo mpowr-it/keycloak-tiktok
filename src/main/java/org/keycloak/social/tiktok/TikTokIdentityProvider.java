@@ -48,7 +48,6 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
         config.setAuthorizationUrl(AUTH_URL);
         config.setTokenUrl(TOKEN_URL);
         config.setUserInfoUrl(USER_INFO_URL);
-        log.debug("TikTokIdentityProvider configured");
     }
 
     /**
@@ -60,8 +59,6 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
      */
     @Override
     public SimpleHttp authenticateTokenRequest(final SimpleHttp tokenRequest) {
-        log.debug("authenticateTokenRequest()");
-
         return tokenRequest
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("Cache-Control", "no-cache")
@@ -78,8 +75,6 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
      */
     @Override
     protected UriBuilder createAuthorizationUrl(AuthenticationRequest request) {
-        log.debug("createAuthorizationUrl()");
-
         UriBuilder builder = super.createAuthorizationUrl(request);
         builder.queryParam("client_key", getConfig().getClientId());
         return builder;
@@ -106,8 +101,6 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
      */
     @Override
     protected BrokeredIdentityContext extractIdentityFromProfile(EventBuilder event, JsonNode profile) {
-        log.debug("extractIdentityFromProfile()");
-
         String unionId = getJsonProperty(profile, "union_id");
         String username = getJsonProperty(profile, "username");
 
@@ -130,7 +123,6 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
      */
     @Override
     protected BrokeredIdentityContext doGetFederatedIdentity(String accessToken) {
-        log.debug("doGetFederatedIdentity()");
         JsonNode profile;
 
         List<String> scopes = Arrays.asList(getDefaultScopes().split(","));
@@ -138,11 +130,8 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
                 .header("Authorization", "Bearer " + accessToken)
                 .param("fields", String.join(",", getFieldsFromScopes(scopes)));
 
-        log.debug("profileRequest: " + profileRequest.getUrl());
-
         try {
             profile = profileRequest.asJson();
-            log.debug("profile: " + profile.toString());
         } catch (Exception e) {
             throw new IdentityBrokerException("Could not obtain user profile from TikTok.", e);
         }
@@ -176,8 +165,6 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
                     .toList());
         }
 
-        log.debug("requestedProfileFields: " + String.join(",", fields));
-
         return fields;
     }
 
@@ -201,10 +188,6 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
         ArrayList<String> newScopes = new ArrayList<>(uniqueScopes);
         Collections.sort(newScopes);
 
-        String finalScopes = String.join(",", newScopes);
-
-        log.debug("requested scopes: " + finalScopes);
-
-        return finalScopes;
+        return String.join(",", newScopes);
     }
 }
