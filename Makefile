@@ -23,6 +23,12 @@ build:
 	mvn clean package
 .PHONY: build
 
+## Run static checks
+check-all:
+	bash ./scripts/check_version.sh
+	$(done)
+.PHONY: check-all
+
 ## Run tests
 test:
 	mvn test
