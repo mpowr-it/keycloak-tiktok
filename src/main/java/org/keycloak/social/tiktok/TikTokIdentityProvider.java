@@ -77,6 +77,10 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
     protected UriBuilder createAuthorizationUrl(AuthenticationRequest request) {
         UriBuilder builder = super.createAuthorizationUrl(request);
         builder.queryParam("client_key", getConfig().getClientId());
+        builder.replaceQueryParam("scope", this.getDefaultScopes());
+
+        log.debug("Authorization URL: " + builder.build().toString());
+
         return builder;
     }
 
@@ -180,8 +184,8 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
             return DEFAULT_SCOPES;
         }
 
-        ArrayList<String> scopes = new ArrayList<>(Arrays.asList(DEFAULT_SCOPES.split(",")));
-        scopes.addAll(Arrays.asList(getConfig().getDefaultScope().trim().split(",")));
+        ArrayList<String> scopes = new ArrayList<>(Arrays.asList(DEFAULT_SCOPES.split("(,|\\s)")));
+        scopes.addAll(Arrays.asList(getConfig().getDefaultScope().trim().split("(,|\\s)")));
 
         // Remove duplicates and sort the scopes
         Set<String> uniqueScopes = new HashSet<>(scopes);
