@@ -2,6 +2,7 @@ package org.keycloak.social.tiktok;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.UriBuilder;
+import jakarta.ws.rs.core.UriInfo;
 import org.jboss.logging.Logger;
 import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider;
 import org.keycloak.broker.provider.AuthenticationRequest;
@@ -11,6 +12,8 @@ import org.keycloak.broker.provider.util.SimpleHttp;
 import org.keycloak.broker.social.SocialIdentityProvider;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserSessionModel;
 
 import java.util.*;
 
@@ -25,6 +28,7 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
     public static final String AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
     public static final String TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
     public static final String USER_INFO_URL = "https://open.tiktokapis.com/v2/user/info/";
+    public static final String REVOKE_ACCESS_URL = "https://open.tiktokapis.com/v2/oauth/revoke/";
     public static final String DEFAULT_SCOPES = "user.info.basic,user.info.profile";
     public static final Map<String, String> PROFILE_FIELDS = new HashMap<>() {{
         put("open_id", "user.info.basic");
@@ -193,5 +197,55 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
         Collections.sort(newScopes);
 
         return String.join(",", newScopes);
+    }
+
+    /**
+     * Revoke the access token for the user session.
+     * @param session Keycloak session
+     * @param userSession User session to revoke the access token for
+     * @param uriInfo Uri information for the request
+     * @param realm Realm model
+     */
+    @Override
+    public void backchannelLogout(KeycloakSession session, UserSessionModel userSession, UriInfo uriInfo, RealmModel realm) {
+        String accessToken = userSession.getNote(FEDERATED_ACCESS_TOKEN);
+
+        if (accessToken == null || accessToken.isEmpty()) {
+            log.warn("No access token found for user session: " + userSession.getId());
+            return;
+        }
+
+        log.debug("Federated access_token: " + accessToken);
+
+        SimpleHttp revokeRequest = SimpleHttp.doPost(REVOKE_ACCESS_URL, session)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Cache-Control", "no-cache")
+                .param("client_key", getConfig().getClientId())
+                .param("client_secret", getConfig().getClientSecret())
+                .param("token", accessToken);
+
+        try {
+            JsonNode response = revokeRequest.asJson();
+            guardRevokeRequestSucceeded(response);
+            log.info("Successfully revoked access token for user session: " + userSession.getId());
+        } catch (Exception e) {
+            log.error("Failed to revoke access token for user session: " + userSession.getId(), e);
+            throw new IdentityBrokerException("Failed to revoke access token for TikTok.", e);
+        }
+    }
+
+    /**
+     * Guard the revoke request response to ensure it succeeded.
+     *
+     * @param response The JSON response from the revoke request.
+     * @throws IdentityBrokerException if the revoke request failed.
+     */
+    private void guardRevokeRequestSucceeded(JsonNode response) {
+        if (response.get("error") != null) {
+            String errorCode = response.get("error").get("code").asText();
+            String errorMessage = response.get("error").get("message").asText();
+            log.error("Error revoking access token: " + errorCode + " - " + errorMessage);
+            throw new IdentityBrokerException("Failed to revoke access token for TikTok: " + errorMessage);
+        }
     }
 }
