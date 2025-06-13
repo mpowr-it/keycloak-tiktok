@@ -25,9 +25,9 @@ Then deploy it into `$KEYCLOAK_HOME/providers` directory and restart Keycloak.
 https://<your-keycloak-domain>/realms/<your-realm>/broker/tiktok/endpoint
 ```
 
-The endpoint URL is shown in the [next step](#configure-tiktik-idp-in-keycloak).
+The endpoint URL is shown in the [next step](#configure-tiktok-idp-in-keycloak).
 
-### Configure TikTik IDP in Keycloak
+### Configure TikTok IDP in Keycloak
 
 1. Add `tiktok` Identity Provider in the realm which you want to configure.
 2. In the `tiktok` identity provider page, set
@@ -86,11 +86,27 @@ You can map all the values to your user profile in Keycloak using Mappers in the
 8. Click `Save`.
 9. Repeat for each attribute you want to map.
 
+## Features
+
+* Implements the user access token management for TikTok, see
+  [TikTok OAuth documentation](https://developers.tiktok.com/doc/oauth-user-access-token-management)
+* OpenID Connect (OIDC) compatible login flow
+* OpenID Connect logout causes revoking the app access in the user's TikTok account
+* Supports multiple scopes:
+  - `user.info.basic` (default)
+  - `user.info.profile` (default)
+  - Further optional scopes like `user.info.stats`
 
 ## Source Build
 
 Clone this repository and run `mvn package`.
 You can see `keycloak-tiktok-<version>.jar` under `target` directory.
+
+## Static checks
+
+```bash
+make check-all
+```
 
 ## Authors
 
