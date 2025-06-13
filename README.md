@@ -108,6 +108,12 @@ You can see `keycloak-tiktok-<version>.jar` under `target` directory.
 make check-all
 ```
 
+## Tests
+
+```bash
+make test
+```
+
 ## Authors
 
 - [Holger Woltersdorf](https://github.com/hollodotme)
