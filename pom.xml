@@ -61,6 +61,7 @@
         <filtering>true</filtering>
       </resource>
     </resources>
+    <testSourceDirectory>src/main/test</testSourceDirectory>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
