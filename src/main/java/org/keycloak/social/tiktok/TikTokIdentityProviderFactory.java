@@ -43,7 +43,7 @@ public class TikTokIdentityProviderFactory extends AbstractIdentityProviderFacto
     public Map<String, String> getOperationalInfo() {
         Map<String, String> ret = new LinkedHashMap<>();
         ret.put("social_provider", "tiktok");
-        ret.put("version", "1.1.0");
+        ret.put("version", "1.2.0");
         ret.put("author", "MPOWR IT GmbH");
         ret.put("author_url", "https://mpowr.it");
         ret.put("project_url", "https://github.com/mpowr-it/keycloak-tiktok");
