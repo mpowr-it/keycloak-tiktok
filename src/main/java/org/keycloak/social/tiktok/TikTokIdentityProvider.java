@@ -8,10 +8,10 @@ import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider;
 import org.keycloak.broker.provider.AuthenticationRequest;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
-import org.keycloak.http.simple.SimpleHttp;
-import org.keycloak.http.simple.SimpleHttpRequest;
 import org.keycloak.broker.social.SocialIdentityProvider;
 import org.keycloak.events.EventBuilder;
+import org.keycloak.http.simple.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttpRequest;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
@@ -22,9 +22,11 @@ import java.util.*;
  * TikTokIdentityProvider is an implementation of the SocialIdentityProvider interface for TikTok.
  */
 public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTokIdentityProviderConfig>
-        implements SocialIdentityProvider<TikTokIdentityProviderConfig> {
+    implements SocialIdentityProvider<TikTokIdentityProviderConfig> {
 
     private static final Logger log = Logger.getLogger(TikTokIdentityProvider.class);
+
+    private List<String> grantedScopes;
 
     public static final String AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
     public static final String TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
@@ -56,6 +58,27 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
     }
 
     /**
+     * Get the federated identity from the token response.
+     * Extracts the granted scopes from TikTok's token response so that only
+     * fields covered by the user's actual consent are requested from the user info endpoint.
+     *
+     * @param response The raw token response from TikTok.
+     * @return BrokeredIdentityContext
+     */
+    @Override
+    public BrokeredIdentityContext getFederatedIdentity(String response) {
+        String scope = extractTokenFromResponse(response, OAUTH2_PARAMETER_SCOPE);
+        if (scope != null && !scope.isEmpty()) {
+            this.grantedScopes = Arrays.asList(scope.split(","));
+            log.debugf("Granted scopes from TikTok token response: %s", scope);
+        } else {
+            this.grantedScopes = Arrays.asList(getDefaultScopes().split(","));
+            log.debug("No scope in token response, falling back to configured scopes.");
+        }
+        return super.getFederatedIdentity(response);
+    }
+
+    /**
      * Authenticate the token request to TikTok.
      *
      * @param tokenRequest The token request to authenticate.
@@ -65,10 +88,10 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
     @Override
     public SimpleHttpRequest authenticateTokenRequest(final SimpleHttpRequest tokenRequest) {
         return tokenRequest
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Cache-Control", "no-cache")
-                .param("client_key", getConfig().getClientId())
-                .param("client_secret", getConfig().getClientSecret());
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Cache-Control", "no-cache")
+            .param("client_key", getConfig().getClientId())
+            .param("client_secret", getConfig().getClientSecret());
     }
 
     /**
@@ -113,6 +136,13 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
         String unionId = getJsonProperty(profile, "union_id");
         String username = getJsonProperty(profile, "username");
 
+        if (username == null || username.isEmpty()) {
+            username = getJsonProperty(profile, "display_name");
+        }
+        if (username == null || username.isEmpty()) {
+            username = unionId;
+        }
+
         BrokeredIdentityContext user = new BrokeredIdentityContext(unionId, getConfig());
         user.setUsername(username);
         user.setEmail((username + "@tiktok.com").toLowerCase());
@@ -134,10 +164,11 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
     protected BrokeredIdentityContext doGetFederatedIdentity(String accessToken) {
         JsonNode profile;
 
-        List<String> scopes = Arrays.asList(getDefaultScopes().split(","));
+        List<String> scopes = (grantedScopes != null) ? grantedScopes
+            : Arrays.asList(getDefaultScopes().split(","));
         SimpleHttpRequest profileRequest = SimpleHttp.create(session).doGet(USER_INFO_URL)
-                .header("Authorization", "Bearer " + accessToken)
-                .param("fields", String.join(",", getFieldsFromScopes(scopes)));
+            .header("Authorization", "Bearer " + accessToken)
+            .param("fields", String.join(",", getFieldsFromScopes(scopes)));
 
         try {
             profile = profileRequest.asJson();
@@ -169,9 +200,9 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
         for (String scope : scopes) {
             // add all keys from PROFILE_FIELDS to "fields" list that have the current "scope" as value
             fields.addAll(PROFILE_FIELDS.entrySet().stream()
-                    .filter(entry -> entry.getValue().equals(scope.trim().toLowerCase()))
-                    .map(Map.Entry::getKey)
-                    .toList());
+                              .filter(entry -> entry.getValue().equals(scope.trim().toLowerCase()))
+                              .map(Map.Entry::getKey)
+                              .toList());
         }
 
         return fields;
@@ -202,10 +233,11 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
 
     /**
      * Revoke the access token for the user session.
-     * @param session Keycloak session
+     *
+     * @param session     Keycloak session
      * @param userSession User session to revoke the access token for
-     * @param uriInfo Uri information for the request
-     * @param realm Realm model
+     * @param uriInfo     Uri information for the request
+     * @param realm       Realm model
      */
     @Override
     public void backchannelLogout(KeycloakSession session, UserSessionModel userSession, UriInfo uriInfo, RealmModel realm) {
@@ -219,11 +251,11 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
         log.debug("Federated access_token: " + accessToken);
 
         SimpleHttpRequest revokeRequest = SimpleHttp.create(session).doPost(REVOKE_ACCESS_URL)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Cache-Control", "no-cache")
-                .param("client_key", getConfig().getClientId())
-                .param("client_secret", getConfig().getClientSecret())
-                .param("token", accessToken);
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Cache-Control", "no-cache")
+            .param("client_key", getConfig().getClientId())
+            .param("client_secret", getConfig().getClientSecret())
+            .param("token", accessToken);
 
         try {
             JsonNode response = revokeRequest.asJson();

@@ -1,6 +1,9 @@
 package org.keycloak.social.tiktok;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.keycloak.broker.provider.BrokeredIdentityContext;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -86,5 +89,82 @@ public class TikTokIdentityProviderTest {
         Collections.sort(fields);
 
         assertEquals(expectedFields, fields);
+    }
+
+    @Test
+    public void testGetFieldsFromBasicScopeOnly() {
+        TikTokIdentityProviderConfig config = new TikTokIdentityProviderConfig();
+        TikTokIdentityProvider provider = new TikTokIdentityProvider(null, config);
+
+        // Simulate a user who only granted user.info.basic
+        List<String> scopes = List.of("user.info.basic");
+        List<String> fields = provider.getFieldsFromScopes(scopes);
+
+        List<String> expectedFields = Arrays.asList(
+            "open_id",
+            "union_id",
+            "avatar_url",
+            "avatar_url_100",
+            "avatar_large_url",
+            "display_name"
+        );
+
+        Collections.sort(expectedFields);
+        Collections.sort(fields);
+
+        assertEquals(expectedFields, fields);
+    }
+
+    @Test
+    public void testExtractIdentityUsesUsernameWhenAvailable() throws Exception {
+        TikTokIdentityProviderConfig config = new TikTokIdentityProviderConfig();
+        TikTokIdentityProvider provider = new TikTokIdentityProvider(null, config);
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode profile = mapper.readTree(
+            "{\"union_id\":\"uid123\",\"username\":\"testuser\",\"display_name\":\"Test User\"}"
+        );
+
+        BrokeredIdentityContext context = provider.extractIdentityFromProfile(null, profile);
+
+        assertEquals("testuser", context.getUsername());
+        assertEquals("testuser@tiktok.com", context.getEmail());
+        assertEquals("uid123", context.getId());
+    }
+
+    @Test
+    public void testExtractIdentityFallsBackToDisplayName() throws Exception {
+        TikTokIdentityProviderConfig config = new TikTokIdentityProviderConfig();
+        TikTokIdentityProvider provider = new TikTokIdentityProvider(null, config);
+
+        ObjectMapper mapper = new ObjectMapper();
+        // No username field — user.info.profile was not granted
+        JsonNode profile = mapper.readTree(
+            "{\"union_id\":\"uid123\",\"display_name\":\"Test User\"}"
+        );
+
+        BrokeredIdentityContext context = provider.extractIdentityFromProfile(null, profile);
+
+        assertEquals("test user", context.getUsername());
+        assertEquals("test user@tiktok.com", context.getEmail());
+        assertEquals("uid123", context.getId());
+    }
+
+    @Test
+    public void testExtractIdentityFallsBackToUnionId() throws Exception {
+        TikTokIdentityProviderConfig config = new TikTokIdentityProviderConfig();
+        TikTokIdentityProvider provider = new TikTokIdentityProvider(null, config);
+
+        ObjectMapper mapper = new ObjectMapper();
+        // Neither username nor display_name available
+        JsonNode profile = mapper.readTree(
+            "{\"union_id\":\"uid123\"}"
+        );
+
+        BrokeredIdentityContext context = provider.extractIdentityFromProfile(null, profile);
+
+        assertEquals("uid123", context.getUsername());
+        assertEquals("uid123@tiktok.com", context.getEmail());
+        assertEquals("uid123", context.getId());
     }
 }

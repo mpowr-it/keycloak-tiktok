@@ -29,6 +29,7 @@ Then deploy it into `$KEYCLOAK_HOME/providers` directory and restart Keycloak.
     - `user.info.basic` (default)
     - `user.info.profile`
     - `user.info.stats` (optional)
+    - ... (further optional scopes as needed)
 
 ```perl
 https://<your-keycloak-domain>/realms/<your-realm>/broker/tiktok/endpoint
