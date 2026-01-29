@@ -8,7 +8,8 @@ import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider;
 import org.keycloak.broker.provider.AuthenticationRequest;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
-import org.keycloak.broker.provider.util.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttp;
+import org.keycloak.http.simple.SimpleHttpRequest;
 import org.keycloak.broker.social.SocialIdentityProvider;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.KeycloakSession;
@@ -58,11 +59,11 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
      * Authenticate the token request to TikTok.
      *
      * @param tokenRequest The token request to authenticate.
-     * @return SimpleHttp
+     * @return SimpleHttpRequest
      * @see <a href="https://developers.tiktok.com/doc/oauth-user-access-token-management#1._fetch_an_access_token_using_an_authorization_code">Fetch an access token using an authorization code</a>
      */
     @Override
-    public SimpleHttp authenticateTokenRequest(final SimpleHttp tokenRequest) {
+    public SimpleHttpRequest authenticateTokenRequest(final SimpleHttpRequest tokenRequest) {
         return tokenRequest
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("Cache-Control", "no-cache")
@@ -134,7 +135,7 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
         JsonNode profile;
 
         List<String> scopes = Arrays.asList(getDefaultScopes().split(","));
-        SimpleHttp profileRequest = SimpleHttp.doGet(USER_INFO_URL, session)
+        SimpleHttpRequest profileRequest = SimpleHttp.create(session).doGet(USER_INFO_URL)
                 .header("Authorization", "Bearer " + accessToken)
                 .param("fields", String.join(",", getFieldsFromScopes(scopes)));
 
@@ -217,7 +218,7 @@ public class TikTokIdentityProvider extends AbstractOAuth2IdentityProvider<TikTo
 
         log.debug("Federated access_token: " + accessToken);
 
-        SimpleHttp revokeRequest = SimpleHttp.doPost(REVOKE_ACCESS_URL, session)
+        SimpleHttpRequest revokeRequest = SimpleHttp.create(session).doPost(REVOKE_ACCESS_URL)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("Cache-Control", "no-cache")
                 .param("client_key", getConfig().getClientId())

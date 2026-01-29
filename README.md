@@ -2,6 +2,15 @@
 
 This is a custom social login provider for Keycloak connecting with TikTok's OAuth2 API, which is not OIDC compatible.
 
+## Compatibility
+
+The following table shows the compatibility between Keycloak and this plugin versions:
+
+| Keycloak Version   | Plugin Version |
+|--------------------|----------------|
+| >= 26.2.0 < 26.5.0 | <= 1.1.0       |
+| >= 26.5.0          | > 1.1.0        |
+
 ## Install
 
 Download `keycloak-tiktok-<version>.jar` from [Releases page](https://github.com/mpowr-it/keycloak-tiktok/releases).
