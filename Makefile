@@ -17,6 +17,7 @@ help:
 	{ lastLine = $$0 }' $(MAKEFILE_LIST)
 
 PROJECT_NAME=keycloak-tiktok
+INSTALL_TARGET=/Users/hollodotme/Sites/MPOWR-IT/LikeTik/iam/src/keycloak/providers
 
 ## Build the package
 build:
@@ -24,7 +25,7 @@ build:
 .PHONY: build
 
 ## Run static checks
-check-all:
+check-all: build
 	bash ./scripts/check_version.sh
 	$(done)
 .PHONY: check-all
@@ -33,3 +34,12 @@ check-all:
 test:
 	mvn test
 .PHONY: test
+
+
+## Install extension
+install: build
+	cp -f ./target/keycloak-tiktok-*.jar "$(INSTALL_TARGET)/$(PROJECT_NAME).jar"
+	diff -q "$(INSTALL_TARGET)/$(PROJECT_NAME).jar" ./target/keycloak-tiktok-*.jar || \
+		{ echo "Files differ, please check the installation."; exit 1; }
+.PHONY: install
+

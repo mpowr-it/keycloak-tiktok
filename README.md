@@ -9,7 +9,8 @@ The following table shows the compatibility between Keycloak and this plugin ver
 | Keycloak Version   | Plugin Version |
 |--------------------|----------------|
 | >= 26.2.0 < 26.5.0 | <= 1.1.0       |
-| >= 26.5.0          | > 1.1.0        |
+| >= 26.5.0 < 26.5.2 | 1.2.0          |
+| >= 26.5.2          | >= 1.2.1       |
 
 ## Install
 

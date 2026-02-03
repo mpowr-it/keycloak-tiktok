@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 pom_version=$(xmllint --xpath "/*[local-name()='project']/*[local-name()='version']/text()" pom.xml)
 java_version=$(grep -o "${pom_version}" src/main/java/org/keycloak/social/tiktok/TikTokIdentityProviderFactory.java)
