@@ -2,7 +2,7 @@
 
 set -ex
 
-pom_version=$(xmllint --xpath "/*[local-name()='project']/*[local-name()='version']/text()" pom.xml)
+pom_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
 java_version=$(grep -o "${pom_version}" src/main/java/org/keycloak/social/tiktok/TikTokIdentityProviderFactory.java)
 
 if [[ "$pom_version" != "$java_version" ]]; then
