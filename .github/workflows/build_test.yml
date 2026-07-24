@@ -16,15 +16,14 @@ jobs:
       - name: GIT--checkout
         uses: actions/checkout@v4
 
-      - name: JAVA--set-up-jdk-17
-        uses: actions/setup-java@v4
+      - name: MISE--set-up
+        uses: jdx/mise-action@v2
         with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'maven'
+          install: true
+          cache: true
 
-      - name: MAVEN--build-and-test
-        run: mvn -B package
+      - name: MISE--build-and-test
+        run: mise run check-all
 
   integration:
     name: Integration test (Keycloak ${{ matrix.keycloak-version }})
