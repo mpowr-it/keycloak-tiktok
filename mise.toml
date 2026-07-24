@@ -1,0 +1,143 @@
+[tools]
+java = "25"          # LTS build toolchain; pom.xml --release 17 keeps output Java 17-compatible
+maven = "3.9"
+
+[env]
+KEYCLOAK_VERSION = "26.5.2"                 # override to test compatibility
+KEYCLOAK_INSTALL_TARGET = "/Users/hollodotme/Sites/MPOWR-IT/LikeTik/iam/src/keycloak/providers"
+PROJECT_NAME = "keycloak-tiktok"
+
+[tasks.build]
+description = "Build the package"
+run = 'mvn clean package -Dversion.keycloak="$KEYCLOAK_VERSION"'
+
+[tasks.test]
+description = "Run tests"
+run = 'mvn test -Dversion.keycloak="$KEYCLOAK_VERSION"'
+
+[tasks.check-all]
+description = "Run static checks"
+depends = ["build"]
+run = "bash ./scripts/check_version.sh"
+
+[tasks.install]
+description = "Build and install extension into local Keycloak providers dir"
+depends = ["build"]
+run = '''
+cp -f ./target/keycloak-tiktok-*.jar "$KEYCLOAK_INSTALL_TARGET/$PROJECT_NAME.jar"
+diff -q "$KEYCLOAK_INSTALL_TARGET/$PROJECT_NAME.jar" ./target/keycloak-tiktok-*.jar \
+  || { echo "Files differ, please check the installation."; exit 1; }
+'''
+
+[tasks.bump]
+description = "Bump plugin version (usage: mise run bump 1.3.0)"
+usage = 'arg "<new_version>" help="New plugin version, e.g. 1.3.0"'
+run = '''
+new_version="${usage_new_version:?Usage: mise run bump <new-version>}"
+old_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+mvn versions:set -DnewVersion="$new_version" -DgenerateBackupPoms=false
+sed -i '' "s/\"$old_version\"/\"$new_version\"/" \
+  src/main/java/org/keycloak/social/tiktok/TikTokIdentityProviderFactory.java
+
+# Prepend a new CHANGELOG.md section (with GitHub comparison link) after the header block.
+today=$(date +%Y-%m-%d)
+repo="https://github.com/mpowr-it/keycloak-tiktok"
+entry="## [$new_version] - $today\n\n[$new_version]: $repo/compare/v$old_version...v$new_version\n\n### Added\n\n* TODO: describe changes\n\n"
+awk -v entry="$entry" '
+  !inserted && /^## \[/ { printf "%s", entry; inserted=1 }
+  { print }
+' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+
+bash ./scripts/check_version.sh
+'''
+
+[tasks.integrate]
+description = "Integration test: build & run Keycloak with the provider (usage: mise run integrate 26.5.2)"
+usage = 'arg "[keycloak_version]" help="Keycloak version to test against" env="KEYCLOAK_VERSION"'
+run = '''
+set -euo pipefail
+
+# Keycloak version to test against; falls back to $KEYCLOAK_VERSION.
+kc_version="${usage_keycloak_version:-${KEYCLOAK_VERSION:-}}"
+if [ -z "$kc_version" ]; then
+  echo "Usage: mise run integrate <keycloak-version>"
+  exit 1
+fi
+
+image_repo="keycloak-tiktok-integration"
+jar_dest="test/integration/keycloak-tiktok.jar"
+provider_id="tiktok"
+host_port="18080"
+base_url="http://localhost:$host_port"
+container="kc-tiktok-integration"
+
+cleanup() {
+  docker rm -f "$container" >/dev/null 2>&1 || true
+  rm -f "$jar_dest"
+}
+trap cleanup EXIT
+
+echo "=================================================================="
+echo ">>> Keycloak $kc_version"
+echo "=================================================================="
+
+docker rm -f "$container" >/dev/null 2>&1 || true
+
+# 1) Build the provider jar against this Keycloak version. Unit tests are
+#    covered by `mise run test`; here we only need the packaged artifact.
+mvn -q clean package -DskipTests -Dversion.keycloak="$kc_version"
+cp -f ./target/keycloak-tiktok-*.jar "$jar_dest"
+
+# 2) Build a Keycloak image with the provider. `kc.sh build` runs during the
+#    image build and fails here if the jar is incompatible with this version.
+image_tag="$image_repo:$kc_version"
+if ! docker build \
+    --build-arg KEYCLOAK_VERSION="$kc_version" \
+    -t "$image_tag" \
+    -f test/integration/Dockerfile \
+    test/integration; then
+  echo "!!! $kc_version: docker build (kc.sh build) failed"
+  exit 1
+fi
+
+# 3) Run the image and confirm the provider is registered via the admin REST API.
+docker run -d --name "$container" -p "$host_port:8080" \
+  -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+  -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+  "$image_tag" start-dev >/dev/null
+
+# Wait for the server to be reachable.
+ready=""
+for _ in $(seq 1 60); do
+  if curl -sf "$base_url/realms/master" >/dev/null 2>&1; then ready="yes"; break; fi
+  if ! docker ps --filter "name=^/$container$" --filter "status=running" --format '{{ "{{" }}.Names{{ "}}" }}' | grep -q "$container"; then
+    echo "!!! $kc_version: container exited during startup"
+    docker logs "$container" 2>&1 | tail -30 || true
+    break
+  fi
+  sleep 2
+done
+
+if [ -z "$ready" ]; then
+  echo "!!! $kc_version: server did not become ready"
+  exit 1
+fi
+
+# Obtain an admin token and query the provider metadata endpoint.
+token=$(curl -s -X POST "$base_url/realms/master/protocol/openid-connect/token" \
+  -d "client_id=admin-cli" -d "username=admin" -d "password=admin" \
+  -d "grant_type=password" \
+  | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+
+status=$(curl -s -o /tmp/kc-tiktok-provider.json -w "%{http_code}" \
+  -H "Authorization: Bearer $token" \
+  "$base_url/admin/realms/master/identity-provider/providers/$provider_id")
+
+if [ "$status" = "200" ] && grep -q "\"id\":\"$provider_id\"" /tmp/kc-tiktok-provider.json; then
+  echo "+++ $kc_version: provider '$provider_id' registered successfully"
+  cat /tmp/kc-tiktok-provider.json; echo
+else
+  echo "!!! $kc_version: provider '$provider_id' NOT registered (HTTP $status)"
+  exit 1
+fi
+'''
