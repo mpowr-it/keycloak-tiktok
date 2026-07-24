@@ -54,6 +54,7 @@ bash ./scripts/check_version.sh
 [tasks.integrate]
 description = "Integration test: build & run Keycloak with the provider (usage: mise run integrate 26.5.2)"
 usage = 'arg "[keycloak_version]" help="Keycloak version to test against" env="KEYCLOAK_VERSION"'
+shell = "bash -c"
 run = '''
 set -euo pipefail
 
