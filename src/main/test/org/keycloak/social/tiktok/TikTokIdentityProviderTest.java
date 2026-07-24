@@ -118,6 +118,7 @@ public class TikTokIdentityProviderTest {
     @Test
     public void testExtractIdentityUsesUsernameWhenAvailable() throws Exception {
         TikTokIdentityProviderConfig config = new TikTokIdentityProviderConfig();
+        config.setEnabled(true);
         TikTokIdentityProvider provider = new TikTokIdentityProvider(null, config);
 
         ObjectMapper mapper = new ObjectMapper();
@@ -135,6 +136,7 @@ public class TikTokIdentityProviderTest {
     @Test
     public void testExtractIdentityFallsBackToDisplayName() throws Exception {
         TikTokIdentityProviderConfig config = new TikTokIdentityProviderConfig();
+        config.setEnabled(true);
         TikTokIdentityProvider provider = new TikTokIdentityProvider(null, config);
 
         ObjectMapper mapper = new ObjectMapper();
@@ -153,6 +155,7 @@ public class TikTokIdentityProviderTest {
     @Test
     public void testExtractIdentityFallsBackToUnionId() throws Exception {
         TikTokIdentityProviderConfig config = new TikTokIdentityProviderConfig();
+        config.setEnabled(true);
         TikTokIdentityProvider provider = new TikTokIdentityProvider(null, config);
 
         ObjectMapper mapper = new ObjectMapper();

@@ -12,6 +12,12 @@ The following table shows the compatibility between Keycloak and this plugin ver
 | >= 26.5.0 < 26.5.2 | 1.2.0          |
 | >= 26.5.2          | >= 1.2.1       |
 
+### Auto-tested keycloak versions
+
+* 26.5.2
+* 26.6.0
+* 26.7.0
+
 ## Install
 
 Download `keycloak-tiktok-<version>.jar` from [Releases page](https://github.com/mpowr-it/keycloak-tiktok/releases).

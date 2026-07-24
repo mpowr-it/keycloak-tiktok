@@ -14,15 +14,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: GIT--checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: JAVA--set-up-jdk-17
-        uses: actions/setup-java@v4
+      - name: MISE--set-up
+        uses: jdx/mise-action@v4
         with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'maven'
+          install: true
+          cache: true
 
-      - name: MAVEN--build-and-test
-        run: mvn -B package
+      - name: MISE--build-and-test
+        run: mise run check-all
+
+  integration:
+    name: Integration test (Keycloak ${{ matrix.keycloak-version }})
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        keycloak-version:
+          - 26.5.2
+          - 26.6.0
+          - 26.7.0
+    steps:
+      - name: GIT--checkout
+        uses: actions/checkout@v7
+
+      - name: MISE--set-up
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+          cache: true
+
+      - name: MISE--integration-test
+        run: mise run integrate ${{ matrix.keycloak-version }}
 

@@ -12,17 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: GIT--checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: JAVA--set-up-jdk-17
-        uses: actions/setup-java@v4
+      - name: MISE--set-up
+        uses: jdx/mise-action@v4
         with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'maven'
+          install: true
+          cache: true
 
-      - name: MAVEN--build-and-test
-        run: mvn -B package
+      - name: MISE--build
+        run: mise run build
 
       - name: GIT--extract-release-version
         id: release
@@ -42,7 +41,7 @@ jobs:
 
       - name: GITHUB--create-release
         if: ${{ success() && startsWith(github.ref, 'refs/tags/') }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: Version ${{ steps.release.outputs.version }}
           body_path: CHANGELOG.md
